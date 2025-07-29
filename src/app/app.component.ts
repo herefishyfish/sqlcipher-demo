@@ -27,7 +27,9 @@ export class AppComponent {
       knownFolders.documents().getFolder('db').path,
       `db.sqlite`
     );
-    this.sqlite = openOrCreate(filePath, "password");
+    this.sqlite = openOrCreate(filePath, {
+      password: "password",
+    });
   }
 
   createTable() {

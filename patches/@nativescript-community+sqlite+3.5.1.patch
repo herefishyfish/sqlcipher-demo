@@ -17,11 +17,20 @@ diff --git a/node_modules/@nativescript-community/sqlite/platforms/android/sqlit
 new file mode 100644
 index 0000000..4c19864
 Binary files /dev/null and b/node_modules/@nativescript-community/sqlite/platforms/android/sqlite.aar differ
+diff --git a/node_modules/@nativescript-community/sqlite/platforms/ios/Podfile b/node_modules/@nativescript-community/sqlite/platforms/ios/Podfile
+index 09f9b5e..c94dbf3 100644
+--- a/node_modules/@nativescript-community/sqlite/platforms/ios/Podfile
++++ b/node_modules/@nativescript-community/sqlite/platforms/ios/Podfile
+@@ -1 +1 @@
+-pod 'FMDB'
+\ No newline at end of file
++pod 'FMDB/SQLCipher'
+\ No newline at end of file
 diff --git a/node_modules/@nativescript-community/sqlite/sqlite.android.d.ts b/node_modules/@nativescript-community/sqlite/sqlite.android.d.ts
-index e93d850..3adc540 100644
+index e93d850..1ae1c47 100644
 --- a/node_modules/@nativescript-community/sqlite/sqlite.android.d.ts
 +++ b/node_modules/@nativescript-community/sqlite/sqlite.android.d.ts
-@@ -3,12 +3,12 @@ import { SQLiteDatabaseBase } from './sqlitedatabase.android';
+@@ -3,14 +3,15 @@ import { SQLiteDatabaseBase } from './sqlitedatabase.android';
  export declare class SQLiteDatabase extends SQLiteDatabaseBase implements ISQLiteDatabase {
      open(): boolean;
  }
@@ -32,17 +41,19 @@ index e93d850..3adc540 100644
      threading?: boolean;
  }): SQLiteDatabase;
 -export declare const openOrCreate: (filePath: string, options?: {
-+export declare const openOrCreate: (filePath: string, password: string, options?: {
++export declare const openOrCreate: (filePath: string,  options?: {
      threading?: boolean;
      transformBlobs?: boolean;
      flags?: number;
++    password?: string;
+ }) => SQLiteDatabase;
+ export declare const deleteDatabase: (filePath: string) => boolean;
 diff --git a/node_modules/@nativescript-community/sqlite/sqlite.android.js b/node_modules/@nativescript-community/sqlite/sqlite.android.js
-index 9aa9075..9249f51 100644
+index 9aa9075..dc2190c 100644
 --- a/node_modules/@nativescript-community/sqlite/sqlite.android.js
 +++ b/node_modules/@nativescript-community/sqlite/sqlite.android.js
-@@ -1,22 +1,33 @@
+@@ -1,22 +1,32 @@
 -import { Application } from '@nativescript/core';
-+import { Application, Utils } from '@nativescript/core';
  import { SQLiteDatabaseBase } from './sqlitedatabase.android';
 -function createDb(dbName, flags) {
 +
@@ -81,14 +92,7 @@ index 9aa9075..9249f51 100644
              if (this.threading && !this.worker) {
                  this.worker = new Worker('./worker');
                  this.worker.onmessage = this.onWorkerMessage;
-@@ -30,10 +41,10 @@ export function wrapDb(db, options) {
-     obj.open();
-     return obj;
- }
--export const openOrCreate = (filePath, options) => {
--    const obj = new SQLiteDatabase(filePath, options);
-+export const openOrCreate = (filePath, password, options) => {
-+    const obj = new SQLiteDatabase(filePath, password, options);
+@@ -35,5 +45,5 @@ export const openOrCreate = (filePath, options) => {
      obj.open();
      return obj;
  };
@@ -96,26 +100,85 @@ index 9aa9075..9249f51 100644
 +export const deleteDatabase = (filePath) => net.zetetic.database.sqlcipher.SQLiteDatabase.deleteDatabase(new java.io.File(filePath));
  //# sourceMappingURL=sqlite.android.js.map
 \ No newline at end of file
+diff --git a/node_modules/@nativescript-community/sqlite/sqlite.ios.d.ts b/node_modules/@nativescript-community/sqlite/sqlite.ios.d.ts
+index d4cb10e..720b2ae 100644
+--- a/node_modules/@nativescript-community/sqlite/sqlite.ios.d.ts
++++ b/node_modules/@nativescript-community/sqlite/sqlite.ios.d.ts
+@@ -2,11 +2,13 @@ import { SQLiteDatabase as ISQLiteDatabase, SqliteParams, SqliteRow } from './sq
+ export declare class SQLiteDatabase implements ISQLiteDatabase {
+     db: FMDatabase;
+     transformBlobs: boolean;
++    password: string | null;
+     filePath: string;
+     constructor(filePathOrDb: string | FMDatabase, options?: {
+         threading?: boolean;
+         transformBlobs?: boolean;
+         readOnly?: boolean;
++        password?: string;
+     });
+     isOpen: boolean;
+     open(): boolean;
+@@ -26,10 +28,12 @@ export declare function openOrCreate(filePath: string, flags?: number, options?:
+     readOnly?: boolean;
+     transformBlobs?: boolean;
+     threading?: boolean;
++    password?: string;
+ }): SQLiteDatabase;
+ export declare function wrapDb(db: FMDatabase, options?: {
+     readOnly?: boolean;
+     transformBlobs?: boolean;
+     threading?: boolean;
++    password?: string;
+ }): SQLiteDatabase;
+ export declare const deleteDatabase: (filePath: string) => boolean;
+diff --git a/node_modules/@nativescript-community/sqlite/sqlite.ios.js b/node_modules/@nativescript-community/sqlite/sqlite.ios.js
+index 3af9e7a..3a65a1f 100644
+--- a/node_modules/@nativescript-community/sqlite/sqlite.ios.js
++++ b/node_modules/@nativescript-community/sqlite/sqlite.ios.js
+@@ -384,6 +384,7 @@ export class SQLiteDatabase {
+             this.filePath = filePathOrDb;
+         }
+         this.transformBlobs = !options || options.transformBlobs !== false;
++        this.password = options && options.password ? options.password : null;
+     }
+     open() {
+         if (!this.db) {
+@@ -393,6 +394,10 @@ export class SQLiteDatabase {
+         if (!this.isOpen) {
+             this.isOpen = this.db.open();
+         }
++        if(this.isOpen && this.password) {
++            this.db.setKey(this.password);
++        }
++
+         return this.isOpen;
+     }
+     close() {
 diff --git a/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.d.ts b/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.d.ts
-index 80bec73..5b86ea9 100644
+index 80bec73..5cc6438 100644
 --- a/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.d.ts
 +++ b/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.d.ts
-@@ -2,10 +2,11 @@ import { SqliteParams } from './sqlite.common';
+@@ -2,14 +2,16 @@ import { SqliteParams } from './sqlite.common';
  export declare function byteArrayToBuffer(value: any): Uint8Array;
  export declare class SQLiteDatabaseBase {
      filePath: string;
 -    db: android.database.sqlite.SQLiteDatabase;
 +    db: net.zetetic.database.sqlcipher.SQLiteDatabase;
-+    password: string;
++    password: string | null;
      flags: any;
      transformBlobs: boolean;
 -    constructor(filePathOrDb: string | android.database.sqlite.SQLiteDatabase, options?: {
-+    constructor(filePathOrDb: string | net.zetetic.database.sqlcipher.SQLiteDatabase, password: string, options?: {
++    constructor(filePathOrDb: string | net.zetetic.database.sqlcipher.SQLiteDatabase, options?: {
          threading?: boolean;
          readOnly?: boolean;
          flags?: number;
+         transformBlobs?: boolean;
++        password?: string;
+     });
+     _isInTransaction: boolean;
+     threading: boolean;
 diff --git a/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.js b/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.js
-index fdd25c9..169d6da 100644
+index fdd25c9..89b91a1 100644
 --- a/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.js
 +++ b/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.js
 @@ -1,4 +1,7 @@
@@ -126,12 +189,8 @@ index fdd25c9..169d6da 100644
  export function byteArrayToBuffer(value) {
      if (!value) {
          return null;
-@@ -125,10 +128,10 @@ const transactionRaw = async (db, action) => {
- };
- const messagePromises = {};
- export class SQLiteDatabaseBase {
--    constructor(filePathOrDb, options) {
-+    constructor(filePathOrDb, password, options) {
+@@ -128,7 +131,7 @@ export class SQLiteDatabaseBase {
+     constructor(filePathOrDb, options) {
          this._isInTransaction = false;
          this.threading = false;
 -        if (filePathOrDb instanceof android.database.sqlite.SQLiteDatabase) {
@@ -143,7 +202,7 @@ index fdd25c9..169d6da 100644
          }
          this.threading = options && options.threading === true;
          this.flags = options?.flags;
-+        this.password = password || '';
++        this.password = options?.password || null;
          this.transformBlobs = !options || options.transformBlobs !== false;
      }
      onWorkerMessage(event) {
