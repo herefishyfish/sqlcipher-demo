@@ -56,4 +56,20 @@ export class AppComponent {
     console.log("Names from database:", names);
     return names;
   }
+
+  deleteDatabase() {
+    this.sqlite.close();
+    const filePath = path.join(
+      knownFolders.documents().getFolder('db').path,
+      `db.sqlite`
+    );
+
+    console.log("Deleting database at path:", filePath);
+    const file = knownFolders.documents().getFile('db/db.sqlite');
+    file.remove().then(() => {
+      console.log("Database deleted successfully.");
+    }).catch((error) => {
+      console.error("Error deleting database:", error);
+    });
+  }
 }

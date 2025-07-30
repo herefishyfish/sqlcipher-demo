@@ -15,8 +15,7 @@ index 612a631..be968b2 100644
 \ No newline at end of file
 diff --git a/node_modules/@nativescript-community/sqlite/platforms/android/sqlite.aar b/node_modules/@nativescript-community/sqlite/platforms/android/sqlite.aar
 new file mode 100644
-index 0000000..4c19864
-Binary files /dev/null and b/node_modules/@nativescript-community/sqlite/platforms/android/sqlite.aar differ
+index 0000000..e69de29
 diff --git a/node_modules/@nativescript-community/sqlite/platforms/ios/Podfile b/node_modules/@nativescript-community/sqlite/platforms/ios/Podfile
 index 09f9b5e..c94dbf3 100644
 --- a/node_modules/@nativescript-community/sqlite/platforms/ios/Podfile
@@ -132,7 +131,7 @@ index d4cb10e..720b2ae 100644
  }): SQLiteDatabase;
  export declare const deleteDatabase: (filePath: string) => boolean;
 diff --git a/node_modules/@nativescript-community/sqlite/sqlite.ios.js b/node_modules/@nativescript-community/sqlite/sqlite.ios.js
-index 3af9e7a..3a65a1f 100644
+index 3af9e7a..95cf74e 100644
 --- a/node_modules/@nativescript-community/sqlite/sqlite.ios.js
 +++ b/node_modules/@nativescript-community/sqlite/sqlite.ios.js
 @@ -384,6 +384,7 @@ export class SQLiteDatabase {
@@ -154,6 +153,15 @@ index 3af9e7a..3a65a1f 100644
          return this.isOpen;
      }
      close() {
+@@ -455,7 +460,7 @@ export class SQLiteDatabase {
+         return res;
+     }
+ }
+-export function openOrCreate(filePath, flags, options) {
++export function openOrCreate(filePath, options) {
+     const obj = new SQLiteDatabase(getRealPath(filePath), options);
+     obj.open();
+     return obj;
 diff --git a/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.d.ts b/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.d.ts
 index 80bec73..5cc6438 100644
 --- a/node_modules/@nativescript-community/sqlite/sqlitedatabase.android.d.ts
